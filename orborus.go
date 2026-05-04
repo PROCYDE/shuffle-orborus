@@ -700,7 +700,7 @@ func deployServiceWorkers(image string) {
 			networks := []swarm.NetworkAttachmentConfig{
 				{Target: networkID},
 			}
-			if strings.ToLower(os.Getenv("SHUFFLE_ATTACH_INGRESS_NETWORK")) == "true" {
+			if strings.ToLower(os.Getenv("SHUFFLE_ATTACH_INGRESS_NETWORK")) != "false" {
 				networks = append(networks, swarm.NetworkAttachmentConfig{Target: "ingress"})
 			}
 			return networks
