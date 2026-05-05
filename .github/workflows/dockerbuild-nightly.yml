@@ -10,6 +10,10 @@ on:
       - "!.github/**"
       - "!**.md"
       - "!docker-compose.yml"
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   main:
     runs-on: ubuntu-latest
