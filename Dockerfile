@@ -2,17 +2,11 @@ FROM golang:1.25 AS builder
 
 WORKDIR /app
 
-COPY orborus.go /app/orborus.go
-COPY go.mod /app/go.mod
-
-#RUN go get
+COPY go.mod go.sum ./
 RUN go mod download
-RUN go mod tidy 
-#RUN go build -v
 
-# Enabled CGO January 2025 (?)
-#RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o orborus.
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/orborus .
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/orborus .
 
 FROM alpine:3.22.1
 
