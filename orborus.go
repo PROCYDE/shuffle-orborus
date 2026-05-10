@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
@@ -2148,11 +2149,13 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 
 				// Not necessary to always send as it's big
 				// Backend optimises this anyway
-				if len(newStats.SensorDetails.Serial) > 100 { 
-					newStats.SensorDetails.Serial = ""
+				if len(newStats.SensorDetails.Serial) > 500 { 
+					newStats.SensorDetails.Serial = newStats.SensorDetails.Serial[:500]
 				}
 
+				newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
 				newStats.SensorDetails.InstalledSoftware = []shuffle.Software{}
+				newStats.SensorDetails.CodeScanner = []shuffle.ProjectInfo{}
 				return newStats
 			}
 			// If there's an error, we ignore the cache and continue to gather details
@@ -2165,29 +2168,50 @@ func getOrborusStats(ctx context.Context, sensorMode shuffle.SensorMode) shuffle
 			newStats.SensorDetails.Hostname = hostname
 		}
 
+		u, err := user.Current()
+		if err == nil { 
+			newStats.SensorDetails.User = fmt.Sprintf("%s", u.Username)
+		}
+		newStats.SensorDetails.Isolated = os.Getenv("HOST_ISOLATED") == "true"
 		newStats.SensorDetails.OS = runtime.GOOS
 		newStats.SensorDetails.Arch = runtime.GOARCH
 		newStats.SensorDetails.ElevatedAccess = shuffle.IsElevated()
 		newStats.SensorDetails.Serial = shuffle.GetProfiler()
 
-		if sensorMode.SoftwareListEnabled == "true" {
+		if sensorMode.ProcessListEnabled != "false" {
+			processes, err := shuffle.ListProcesses()
+			if err == nil { 
+				newStats.SensorDetails.ProcessList = processes
+			}
+		}
+
+		if sensorMode.SoftwareListEnabled != "false" { 
 			// Check cache first before running the command
 			newStats.SensorDetails.InstalledSoftware = shuffle.ListInstalledSoftware()
 		}
 
-		if sensorMode.HdEncryptedCheck == "true" {
+		if sensorMode.CodeScannerEnabled != "false" {
+			newStats.SensorDetails.CodeScanner = shuffle.ListCodeScannerProjects()
+
+			if debug {
+				log.Printf("[DEBUG] FOUND %d CODE PROJECTS", len(newStats.SensorDetails.CodeScanner))
+			}
+		}
+
+		if sensorMode.HdEncryptedCheck != "false" {
 			newStats.SensorDetails.HdEncrypted = fmt.Sprintf("%t", shuffle.IsDiskEncrypted())
 		}
 
-		if sensorMode.ScreenlockCheck == "true" {  
+		if sensorMode.ScreenlockCheck != "false" {
 			newStats.SensorDetails.AutomaticScreenlockEnabled = fmt.Sprintf("%t", shuffle.IsAutomaticScreenlockEnabled())
 		}
 
-		if len(sensorMode.LogForwarding) > 0 {
+
+		if len(sensorMode.LogForwarding) > 0 && sensorMode.LogForwarding != "false" {
 			newStats.SensorDetails.LogForwarding = fmt.Sprintf("not implemented: %s", sensorMode.LogForwarding)
 		}
 
-		if len(sensorMode.ResponseActions) > 0 { 
+		if len(sensorMode.ResponseActions) > 0 {
 			newStats.SensorDetails.ResponseActions = sensorMode.ResponseActions
 		}
 
@@ -2507,14 +2531,20 @@ func StartAgentSensor(sensorMode shuffle.SensorMode) error {
 
 // Initial loop etc
 func main() {
+	mainLoop()
+}
+
+func mainLoop() {
 
 	// Checks for whether sensor mode is enabled for detection/response
 	sensorMode := shuffle.SensorMode{
 		Enabled: os.Getenv("SHUFFLE_AGENT_SENSOR_MODE") == "true",
 
-		SoftwareListEnabled: os.Getenv("SHUFFLE_SOFTWARE_LIST_ENABLED"),
-		HdEncryptedCheck: os.Getenv("SHUFFLE_HD_ENCRYPTED_CHECK"),
-		ScreenlockCheck: os.Getenv("SHUFFLE_SCREENLOCK_CHECK"),
+		ProcessListEnabled: os.Getenv("SHUFFLE_PROCESS_LIST_ENABLED"),
+		SoftwareListEnabled: os.Getenv("SHUFFLE_SOFTWARE_LIST_ENABLED"), 
+		CodeScannerEnabled: os.Getenv("SHUFFLE_CODE_SCANNER_ENABLED"), 
+		HdEncryptedCheck: os.Getenv("SHUFFLE_HD_ENCRYPTED_CHECK"), 
+		ScreenlockCheck: os.Getenv("SHUFFLE_SCREENLOCK_CHECK"), 
 
 		LogForwarding: os.Getenv("SHUFFLE_LOG_FORWARDING"),
 		ResponseActions: os.Getenv("SHUFFLE_RESPONSE_ACTIONS"), 
@@ -2548,7 +2578,7 @@ func main() {
 		}
 	}
 
-	log.Println("[INFO] Setting up execution environment for env '%s'", environment)
+	log.Printf("[INFO] Setting up execution environment for env '%s'", environment)
 	if baseUrl == "" {
 		baseUrl = "https://uk.shuffler.io"
 	}
@@ -2582,9 +2612,29 @@ func main() {
 
 		if sensorMode.ResponseActions != "full" && sensorMode.ResponseActions != "controlled" { 
 			log.Printf("[WARNING] Invalid response actions mode '%s'. Disabling. Valid options are 'full', 'controlled', or empty.", sensorMode.ResponseActions)
-			sensorMode.ResponseActions = ""
+			sensorMode.ResponseActions = "false"
 
 		}
+
+		// Autoconfig these. They are off if set to false
+		if len(sensorMode.ProcessListEnabled) == 0 { 
+			sensorMode.ProcessListEnabled = "true"
+		} 
+		if len(sensorMode.SoftwareListEnabled) == 0 { 
+			sensorMode.SoftwareListEnabled = "true"
+		} 
+		if len(sensorMode.CodeScannerEnabled) == 0 { 
+			sensorMode.CodeScannerEnabled = "true"
+		} 
+		if len(sensorMode.HdEncryptedCheck) == 0 {
+			sensorMode.HdEncryptedCheck = "true"
+		} 
+		if len(sensorMode.ScreenlockCheck) == 0 {
+			sensorMode.ScreenlockCheck = "true"
+		}
+
+		// Just making sure it's not set for no reason. This means a restart of the agent doesn't check it well tho
+		os.Setenv("HOST_ISOLATED", "false")
 
 		log.Printf("[INFO] Running in sensor/agent mode. Starting the agent.")
 		err := StartAgentSensor(sensorMode)
@@ -2820,6 +2870,8 @@ func main() {
 
 	log.Printf("[INFO] Waiting for executions at %s with Environment %#v. Sensormode: %#v", fullUrl, environment, sensorMode.Enabled)
 
+	connectionFailed := false
+	unmarshalFailed := false
 	hostname, err := getHostname()
 	hasStarted := false
 	for {
@@ -2906,13 +2958,21 @@ func main() {
 		if newresp.StatusCode == 409 {
 			log.Printf("[INFO] Another Orborus is already handling jobs. Polling every 30 seconds in case Leader stops. Resp: %s", string(body))
 			time.Sleep(time.Duration(30) * time.Second)
+			connectionFailed = true 
 			continue
 		} else if newresp.StatusCode != 200 {
 			log.Printf("[ERROR] Backend connection failed for url '%s', or is missing (%d): %s", fullUrl, newresp.StatusCode, string(body))
+			connectionFailed = true 
 		} else {
 			if !hasStarted {
-				log.Printf("[DEBUG] Starting iteration on environment %#v (default: Shuffle). Got statuscode %d from backend on first request", environment, newresp.StatusCode)
+				log.Printf("[INFO] Starting iteration on environment %#v (default: Shuffle). Got statuscode %d from backend on first request", environment, newresp.StatusCode)
+			} else if connectionFailed == true && unmarshalFailed == true {
+				log.Printf("[INFO] Successfully reconnected to backend at %s. Resuming normal operation. Status code: %d", fullUrl, newresp.StatusCode)
+
 			}
+
+			connectionFailed = false
+			unmarshalFailed = false
 
 			if os.Getenv("SHUFFLE_SWARM_CONFIG") == "run" && os.Getenv("SHUFFLE_SCALE_REPLICAS") == "" {
 				//go AutoScale(ctx)
@@ -2924,6 +2984,7 @@ func main() {
 		err = json.Unmarshal(body, &executionRequests)
 		if err != nil {
 			log.Printf("[WARNING] Failed executionrequest in queue unmarshaling: %s", err)
+			unmarshalFailed = true 
 			if !sensorMode.Enabled { 
 				sleepTime = 10
 			}
@@ -2933,6 +2994,7 @@ func main() {
 				go zombiecheck(ctx, workerTimeout, sensorMode)
 				zombiecounter = 0
 			}
+
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 			continue
 		}
@@ -2991,7 +3053,13 @@ func main() {
 							}
 
 							if sensorMode.ResponseActions != "" {
-								go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+								// Special handler for disabling RCE entirely
+								if strings.ToLower(sensorMode.ResponseActions) == "full" && incRequest.ExecutionArgument == "script:disable_rce" {
+									sensorMode.ResponseActions = "false"
+									os.Setenv("SHUFFLE_RESPONSE_ACTIONS", "false")
+								} else {
+									go shuffle.HandleSensorResponseAction(hostname, sensorMode, incRequest)
+								}
 							}
 							toBeRemoved.Data = append(toBeRemoved.Data, incRequest)
 						} else {
