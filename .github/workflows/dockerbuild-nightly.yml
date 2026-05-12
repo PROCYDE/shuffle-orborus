@@ -63,7 +63,9 @@ jobs:
           cache-to: type=gha,mode=max
           tags: |
             ghcr.io/shuffle/${{ matrix.app }}:${{ matrix.version }}
+            ghcr.io/shuffle-orborus/shuffle-${{ matrix.app }}:${{ matrix.version }}
             ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-${{ matrix.app }}:${{ matrix.version }}
+            shuffle-orborus/shuffle-${{ matrix.app }}:${{ matrix.version }}
             frikky/shuffle-${{ matrix.app }}:${{ matrix.version }}
             frikky/shuffle:${{ matrix.app }}
 
