@@ -53,7 +53,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GH_TOKEN }}
 
       - name: Determine build type and version
         id: version
@@ -66,7 +66,7 @@ jobs:
             BUILD_TYPE="latest"
           else
             BUILD_TYPE="${{ github.event.inputs.build_type }}"
-            VERSION="${{ github.event.inputs.version || 'latest' }}"
+            VERSION="latest"
           fi
 
           echo "build_type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
