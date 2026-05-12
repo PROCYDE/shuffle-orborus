@@ -53,7 +53,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.PUSH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine build type and version
         id: version
@@ -89,9 +89,7 @@ jobs:
           cache-to: type=gha,mode=max
           tags: |
             ghcr.io/shuffle/shuffle-orborus:latest
-            ghcr.io/shuffle-orborus/shuffle-orborus:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-orborus:latest
-            shuffle-orborus/shuffle-orborus:latest
             frikky/shuffle-orborus:latest
             frikky/shuffle:orborus
 
@@ -108,11 +106,7 @@ jobs:
           tags: |
             ghcr.io/shuffle/shuffle-orborus:${{ steps.version.outputs.version }}
             ghcr.io/shuffle/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
-            ghcr.io/shuffle-orborus/shuffle-orborus:${{ steps.version.outputs.version }}
-            ghcr.io/shuffle-orborus/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
             ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-orborus:${{ steps.version.outputs.version }}
             ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
-            shuffle-orborus/shuffle-orborus:${{ steps.version.outputs.version }}
-            shuffle-orborus/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
             frikky/shuffle-orborus:${{ steps.version.outputs.version }}
             frikky/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
