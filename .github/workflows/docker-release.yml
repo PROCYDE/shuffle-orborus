@@ -110,3 +110,12 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
             frikky/shuffle-orborus:${{ steps.version.outputs.version }}
             frikky/shuffle-orborus:${{ steps.version.outputs.stripped_version }}
+
+      - name: Push tag to shuffle-orborus
+        if: steps.version.outputs.build_type == 'release' || steps.version.outputs.build_type == 'both'
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git remote add shuffle-orborus https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/shuffle/shuffle-orborus.git
+          git push shuffle-orborus ${{ steps.version.outputs.version }}
