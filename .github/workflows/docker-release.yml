@@ -88,9 +88,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/shuffle/shuffle-orborus:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-orborus:latest
-            frikky/shuffle-orborus:latest
+            ghcr.io/shuffle/shuffle-orborus:2.2.1  # TODO: bump when releasing
+            ${{ secrets.DOCKERHUB_USERNAME }}/shuffle-orborus:2.2.1
+            frikky/shuffle-orborus:2.2.1
             frikky/shuffle:orborus
 
       - name: Build and push (release with aliases)
