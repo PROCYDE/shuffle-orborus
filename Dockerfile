@@ -15,7 +15,7 @@ RUN apk add --no-cache bash tzdata
 COPY --from=builder /app/orborus /orborus
 ENV ENVIRONMENT_NAME=Shuffle \
     BASE_URL=http://shuffle-backend:5001 \
-    DOCKER_API_VERSION=1.40 \
+    DOCKER_API_VERSION=1.44 \
     SHUFFLE_OPENSEARCH_URL=https://opensearch:9200
 
 CMD ["./orborus"]
