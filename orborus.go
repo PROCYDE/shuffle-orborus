@@ -879,22 +879,38 @@ func deployServiceWorkers(image string) {
 		services, serr := dockercli.ServiceList(ctx, types.ServiceListOptions{})
 		if serr == nil {
 			for _, svc := range services {
-				if svc.Spec.Annotations.Name == innerContainerName {
-					log.Printf("[DEBUG] Found service %s (%s) — patching network attach", innerContainerName, svc.ID)
+				if svc.Spec.Annotations.Name != innerContainerName {
+					continue
+				}
 
-					spec := svc.Spec
-					spec.TaskTemplate.Networks = append(spec.TaskTemplate.Networks, swarm.NetworkAttachmentConfig{
-						Target: networkID,
-					})
-
-					_, uerr := dockercli.ServiceUpdate(ctx, svc.ID, svc.Version, spec, types.ServiceUpdateOptions{})
-					if uerr != nil {
-						log.Printf("[WARNING] Failed to patch service %s with network %s: %v", innerContainerName, networkID, uerr)
-					} else {
-						log.Printf("[INFO] Successfully attached network %s to service %s", networkID, innerContainerName)
+				// Check if the network already exists or not
+				networkFound := false
+				for _, net := range svc.Spec.TaskTemplate.Networks {
+					if net.Target == networkID {
+						networkFound = true
+						break
 					}
+				}
+
+				if networkFound {
+					log.Printf("[DEBUG] Network %s already attached to service %s, skipping patch", networkID, innerContainerName)
 					break
 				}
+
+				log.Printf("[DEBUG] Found service %s (%s) — patching network attach", innerContainerName, svc.ID)
+
+				spec := svc.Spec
+				spec.TaskTemplate.Networks = append(spec.TaskTemplate.Networks, swarm.NetworkAttachmentConfig{
+					Target: networkID,
+				})
+
+				_, uerr := dockercli.ServiceUpdate(ctx, svc.ID, svc.Version, spec, types.ServiceUpdateOptions{})
+				if uerr != nil {
+					log.Printf("[WARNING] Failed to patch service %s with network %s: %v", innerContainerName, networkID, uerr)
+				} else {
+					log.Printf("[INFO] Successfully attached network %s to service %s", networkID, innerContainerName)
+				}
+				break
 			}
 		} else {
 			log.Printf("[WARNING] Failed to list services for patching network attach: %v", serr)
