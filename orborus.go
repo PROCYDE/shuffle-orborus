@@ -2771,7 +2771,6 @@ func mainLoop() {
 		// FIXME - during init, BUILD and/or LOAD worker and app_sdk
 		// Build/load app_sdk so it can be loaded as 127.0.0.1:5000/walkoff_app_sdk
 		log.Printf("[INFO] Setting up Docker environment. Downloading worker and App SDK!")
-
 		initializeImages()
 
 		if swarmConfig == "run" || swarmConfig == "swarm" || isKubernetes == "true" {
@@ -4776,7 +4775,11 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 
 			// Never happening but okay
 			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
-				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-workers:%s", workerVersion)
+				if workerVersion == "" { 
+					workerVersion = "latest"
+				}
+
+				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 				if len(newWorkerImage) > 0 {
 					workerImage = newWorkerImage
 				}
@@ -4809,7 +4812,11 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 			}
 
 			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
-				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-workers:%s", workerVersion)
+				if len(workerVersion) == 0 {
+					workerVersion = "latest"
+				}
+
+				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
 				if len(newWorkerImage) > 0 {
 					workerImage = newWorkerImage
 				}
