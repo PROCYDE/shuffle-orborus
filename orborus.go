@@ -4776,7 +4776,7 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 
 			// Never happening but okay
 			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
-				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
+				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-workers:%s", workerVersion)
 				if len(newWorkerImage) > 0 {
 					workerImage = newWorkerImage
 				}
@@ -4809,7 +4809,7 @@ func sendWorkerRequest(workflowExecution shuffle.ExecutionRequest, image string,
 			}
 
 			if strings.Contains(fmt.Sprintf("%s", err), "connection refused") || strings.Contains(fmt.Sprintf("%s", err), "EOF") {
-				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-worker:%s", workerVersion)
+				workerImage := fmt.Sprintf("ghcr.io/shuffle/shuffle-workers:%s", workerVersion)
 				if len(newWorkerImage) > 0 {
 					workerImage = newWorkerImage
 				}
