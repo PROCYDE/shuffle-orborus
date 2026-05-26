@@ -697,15 +697,11 @@ func deployServiceWorkers(image string) {
 				Replicas: &replicatedJobs,
 			},
 		},
-		Networks: func() []swarm.NetworkAttachmentConfig {
-			networks := []swarm.NetworkAttachmentConfig{
-				{Target: networkID},
-			}
-			if strings.ToLower(os.Getenv("SHUFFLE_ATTACH_INGRESS_NETWORK")) != "false" {
-				networks = append(networks, swarm.NetworkAttachmentConfig{Target: "ingress"})
-			}
-			return networks
-		}(),
+		Networks: []swarm.NetworkAttachmentConfig{
+			swarm.NetworkAttachmentConfig{
+				Target: networkID,
+			},
+		},
 		EndpointSpec: &swarm.EndpointSpec{
 			Mode: "vip",
 			Ports: []swarm.PortConfig{
